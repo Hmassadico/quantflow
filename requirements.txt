@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pandas
+requests
+sqlalchemy
+asyncpg
+streamlit
+plotly
+yfinance
+python-dotenv

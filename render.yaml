@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: quantflow-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port 10000
+    plan: free
+    autoDeploy: true
+
+  - type: web
+    name: quantflow-dashboard
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run dashboard/app.py --server.port 10001
+    plan: free
+    autoDeploy: true

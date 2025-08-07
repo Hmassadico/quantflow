@@ -8,3 +8,5 @@ streamlit
 plotly
 yfinance
 python-dotenv
+duckdb
+ta

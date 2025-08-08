@@ -11,6 +11,6 @@ services:
     name: quantflow-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand:  uvicorn api.main:app --host 0.0.0.0 --port 10000
+    startCommand: python init_db.py && uvicorn api.main:app --host 0.0.0.0 --port 10000
     plan: free
     autoDeploy: true

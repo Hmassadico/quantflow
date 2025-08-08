@@ -10,3 +10,4 @@ yfinance
 python-dotenv
 duckdb
 ta
+seaborn

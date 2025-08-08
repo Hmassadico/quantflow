@@ -1,5 +1,13 @@
 services:
   - type: web
+    name: quantflow-dashboard
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand:  streamlit run dashboard/app.py --server.port 10001
+    plan: free
+    autoDeploy: true
+
+  - type: web
     name: quantflow-api
     env: python
     buildCommand: pip install -r requirements.txt
@@ -7,11 +15,4 @@ services:
     plan: free
     autoDeploy: true
 
-  - type: web
-    name: quantflow-dashboard
-    env: python
-    buildCommand: pip install -r requirements.txt
-
-    startCommand: python etl/fetch_and_store.py streamlit run dashboard/app.py --server.port 10001
-    plan: free
-    autoDeploy: true
+  

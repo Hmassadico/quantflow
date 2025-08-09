@@ -7,7 +7,11 @@ import matplotlib.pyplot as plt
 from sqlalchemy import text
 from ta.momentum import RSIIndicator
 from ta.trend import SMAIndicator
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 from common.db import get_engine, ensure_schema
+
 
 # === Setup ===
 st.set_page_config(page_title="QuantFlow", layout="wide")

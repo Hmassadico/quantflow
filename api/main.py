@@ -5,7 +5,11 @@ import yfinance as yf
 from sqlalchemy import text
 from ta.momentum import RSIIndicator
 from ta.trend import SMAIndicator
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 from common.db import get_engine, ensure_schema
+
 
 app = FastAPI(title="QuantFlow API")
 engine = get_engine()

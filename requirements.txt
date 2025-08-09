@@ -14,3 +14,4 @@ seaborn
 SQLAlchemy
 psycopg2-binary
 duckdb-engine
+psycopg2

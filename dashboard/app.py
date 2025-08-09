@@ -1,18 +1,20 @@
 import streamlit as st
-import duckdb
 import pandas as pd
 import yfinance as yf
 import plotly.graph_objs as go
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sqlalchemy import text
 from ta.momentum import RSIIndicator
 from ta.trend import SMAIndicator
-from pathlib import Path
+from common.db import get_engine, ensure_schema
 
 # === Setup ===
 st.set_page_config(page_title="QuantFlow", layout="wide")
 st.title("📈 QuantFlow Dashboard")
-DB_PATH = Path("../data/market_data.duckdb")
+
+engine = get_engine()
+ensure_schema(engine)
 TABLE_NAME = "stocks"
 
 default_symbols = ["AAPL", "MSFT", "GOOG", "TSLA", "NVDA", "META", "AMZN"]
@@ -27,49 +29,49 @@ st.sidebar.header("📅 Date Range")
 start_date = st.sidebar.date_input("Start Date", pd.to_datetime("2024-01-01"))
 end_date = st.sidebar.date_input("End Date", pd.to_datetime("today"))
 
-# === Get Stock Data from DuckDB or yFinance ===
-con = duckdb.connect(str(DB_PATH))
-query = f"SELECT * FROM {TABLE_NAME} WHERE Symbol = '{symbol}' ORDER BY Date"
-df = con.execute(query).fetchdf()
+def load_from_db(sym: str) -> pd.DataFrame:
+    q = text('SELECT * FROM stocks WHERE "Symbol" = :s ORDER BY "Date"')
+    return pd.read_sql(q, engine, params={"s": sym.upper()})
 
-# Fetch from Yahoo if missing
-if df.empty:
-    st.warning(f"🔄 No data for {symbol}. Fetching live...")
-    df = yf.download(symbol, period="6mo", interval="1d")
+def fetch_live_and_save(sym: str) -> pd.DataFrame:
+    df = yf.download(sym, period="6mo", interval="1d")
     if df.empty:
-        st.error("Symbol not found.")
-        st.stop()
-
-    df.reset_index(inplace=True)
+        return df
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
+    df.reset_index(inplace=True)
     if "Adj Close" in df.columns:
         df.rename(columns={"Adj Close": "Adj_Close"}, inplace=True)
     else:
         df["Adj_Close"] = df["Close"]
-
-    df["Symbol"] = symbol
+    df["Symbol"] = sym.upper()
     df = df[["Date", "Open", "High", "Low", "Close", "Adj_Close", "Volume", "Symbol"]]
-    con.register("new_df", df)
-    con.execute(f"""
-        INSERT INTO {TABLE_NAME}
-        SELECT Date, Open, High, Low, Close, Adj_Close, Volume, Symbol FROM new_df
-    """)
+    # append
+    df.to_sql(TABLE_NAME, con=engine, if_exists="append", index=False, method="multi", chunksize=1000)
+    return df
+
+# === Get Stock Data from DB or yFinance ===
+df = load_from_db(symbol)
+
+if df.empty:
+    st.warning(f"🔄 No data for {symbol}. Fetching live...")
+    df = fetch_live_and_save(symbol)
+    if df.empty:
+        st.error("Symbol not found.")
+        st.stop()
     st.success(f"✅ Data for {symbol} saved!")
 
 # === Filter by date ===
-df['Date'] = pd.to_datetime(df['Date'])
-df = df[(df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date))]
+df["Date"] = pd.to_datetime(df["Date"])
+df = df[(df["Date"] >= pd.to_datetime(start_date)) & (df["Date"] <= pd.to_datetime(end_date))]
 
 if df.empty:
     st.warning("No data for selected date range.")
     st.stop()
 
 # === Indicators ===
-rsi = RSIIndicator(close=df["Close"]).rsi()
-sma = SMAIndicator(close=df["Close"], window=20).sma_indicator()
-df["RSI"] = rsi
-df["SMA20"] = sma
+df["RSI"] = RSIIndicator(close=df["Close"]).rsi()
+df["SMA20"] = SMAIndicator(close=df["Close"], window=20).sma_indicator()
 
 # === Crossover Alert ===
 last_close = df["Close"].iloc[-1]
@@ -117,17 +119,16 @@ if selected_corr_symbols:
     corr_df = pd.DataFrame()
     for sym in selected_corr_symbols:
         try:
-            q = f"SELECT Date, Close FROM {TABLE_NAME} WHERE Symbol = '{sym}' ORDER BY Date"
-            data = con.execute(q).fetchdf()
-            data = data.set_index("Date")["Close"].rename(sym)
-            corr_df = pd.concat([corr_df, data], axis=1)
+            q = text('SELECT "Date","Close" FROM stocks WHERE "Symbol" = :s ORDER BY "Date"')
+            data = pd.read_sql(q, engine, params={"s": sym.upper()})
+            if not data.empty:
+                data = data.set_index("Date")["Close"].rename(sym)
+                corr_df = pd.concat([corr_df, data], axis=1)
         except Exception as e:
             st.warning(f"Couldn't load {sym}: {e}")
 
     if not corr_df.empty:
         corr_matrix = corr_df.corr()
-
-        # Plot with seaborn
         fig_corr, ax = plt.subplots(figsize=(8, 5))
         sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
         st.pyplot(fig_corr)

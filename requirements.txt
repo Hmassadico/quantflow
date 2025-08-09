@@ -11,3 +11,6 @@ python-dotenv
 duckdb
 ta
 seaborn
+SQLAlchemy
+psycopg2-binary
+duckdb-engine

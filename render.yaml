@@ -9,6 +9,11 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false   # set in Render dashboard to your Neon/Supabase URI
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
 
   - type: web
     name: quantflow-api
@@ -19,4 +24,8 @@ services:
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
         sync: false

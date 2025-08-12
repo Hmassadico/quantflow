@@ -15,3 +15,4 @@ SQLAlchemy
 psycopg2-binary
 duckdb-engine
 psycopg2
+python-multipart
